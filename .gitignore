@@ -4,7 +4,6 @@ npm-debug.log
 yarn-error.log
 
 # Output files
-screenshots/
 temp_*.webp
 
 # Sensitive files
