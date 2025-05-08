@@ -36,22 +36,25 @@ async function waitForCloudflare(page, url, timeout = 30000) {
                 })
             ]);
 
-            const isStillCloudflare = await page.evaluate(titlePatterns => {
-                const title = document.title.toLowerCase();
-                const regexPatterns = titlePatterns.map(pattern => new RegExp(pattern, 'i'));
-                return regexPatterns.some(pattern => pattern.test(title));
-            }, cloudflareTitlePatterns);
+            const checkCloudflare = async (maxAttempts = 5, delay = 200) => {
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    const isCloudflare = await page.evaluate(patterns => {
+                        const title = document.title.toLowerCase();
+                        return patterns
+                            .map(pattern => new RegExp(pattern, 'i'))
+                            .some(regex => regex.test(title));
+                    }, cloudflareTitlePatterns);
 
-            if (!isStillCloudflare) {
-                await sleep(2000); // Wait for stable redirection
-                if (!(await page.evaluate(titlePatterns => {
-                    const title = document.title.toLowerCase();
-                    const regexPatterns = titlePatterns.map(pattern => new RegExp(pattern, 'i'));
-                    return regexPatterns.some(pattern => pattern.test(title));
-                }, cloudflareTitlePatterns))) {
-                    break;
+                    if (isCloudflare) return false;
+                    await sleep(delay);
                 }
+                return true;
+            };
+
+            if (await checkCloudflare(500, 10)) {
+                break;
             }
+
             await sleep(1000);
         } catch {
             await sleep(1000);

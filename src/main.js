@@ -50,12 +50,11 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
         await hideCookies(page);
 
         bar.increment(1, { step: 'Final delay' });
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 15; i++) {
             try {
                 await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 1000 });
-            } catch {
-                await sleep(500);
-            }
+            } catch {}
+            await sleep(50);
         }
         await sleep(connectConfig.minFinalDelay || 0);
 
@@ -99,7 +98,6 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
             siteConfig.connectConfig || {},
             { finalDelay: siteConfig.minFinalDelay || 0 }
         ]);
-        console.log(siteConfig.connectConfig || {});
 
         try {
             await captureScreenshot(url, domain, outputPath, connectConfig, bar);

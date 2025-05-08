@@ -4,7 +4,7 @@ This project automates capturing clean, 1200px-wide, ≤100KB homepage screensho
 
 ## Prerequisites
 
-- **Node.js**: v16 or higher.
+- **Node.js**: v22 or higher.
 - **Brave Browser** (preferred) or **Google Chrome**: Installed on your system for ad-blocking capabilities via uBlock Origin.
 - **npm**: For installing dependencies.
 - **System**: MacOS, Linux, or Windows.
