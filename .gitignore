@@ -12,9 +12,6 @@ config.js
 *.key
 *.pem
 
-# uBlock Origin extension (install separately)
-extensions/
-
 # Temporary files
 *.log
 *.tmp
