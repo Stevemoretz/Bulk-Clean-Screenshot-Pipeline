@@ -1,0 +1,33 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Output files
+screenshots/
+temp_*.webp
+
+# Sensitive files
+config.js
+.env
+*.key
+*.pem
+
+# uBlock Origin extension (install separately)
+extensions/
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.iml
