@@ -13,7 +13,7 @@ This project captures clean, 1200px-wide, ≤100KB homepage screenshots for webs
 3. **Install Dependencies**  
    Clone or download this repository, navigate to the project directory, and run:
 ```bash
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install puppeteer
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install --no-bin-links
 ```
 
 4. **Copy Configuration**  
