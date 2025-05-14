@@ -1,5 +1,5 @@
 module.exports = {
-    "parallelBrowserCount": 2,
+    "parallelBrowserCount": 1,
     "globalConnectConfig": {
         "delays": {
             "hideCookies": 500,
