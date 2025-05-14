@@ -1,160 +1,118 @@
 # Automated Screenshot Pipeline
 
-This project automates capturing clean, 1200px-wide, ≤100KB homepage screenshots for AI-app websites, free of ads, pop-ups, and age gates, for WordPress integration. It uses Puppeteer with Brave Browser (preferred, though Chrome is supported) and uBlock Origin for ad blocking, handles Cloudflare Turnstile, and processes URLs sequentially with a progress bar. Screenshots are saved as WebP files.
-
-## Prerequisites
-
-- **Node.js**: v22 or higher.
-- **Brave Browser** (preferred) or **Google Chrome**: Installed on your system for ad-blocking capabilities via uBlock Origin.
-- **npm**: For installing dependencies.
-- **System**: MacOS, Linux, or Windows.
+This project captures clean, 1200px-wide, ≤100KB homepage screenshots for websites, free of ads, pop-ups, and cookie banners, using Puppeteer with Brave Browser and uBlock Origin. Screenshots are saved as WebP files in the `screenshots/` folder.
 
 ## Installation
 
-1. Clone or download this repository.
-2. Navigate to the project directory:
-   ```bash
-   cd screenshot-pipeline
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+1. **Install Node.js**  
+   Download and install Node.js (v22 or higher) from [nodejs.org](https://nodejs.org).
 
-## Configuration
+2. **Install Brave Browser**  
+   Download and install Brave Browser from [brave.com](https://brave.com). (Google Chrome also works, but Brave is preferred for better ad-blocking.)
 
-Edit `config.js` to set up the browser executable path and website-specific settings. The configuration is divided into `globalConnectConfig` for shared settings and `websites` for per-site options.
-
-### Example `config.js`
-
-```javascript
-module.exports = {
-    "globalConnectConfig": {
-        "headless": true,
-        "customConfig": {
-            // MacOS Brave Path
-            "chromePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-            // for Linux change to '/usr/bin/brave-browser' (Brave) or '/usr/bin/google-chrome' (Chrome)
-            // for Windows change to 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe' (Brave) or 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' (Chrome)
-        }
-    },
-    "websites": {
-        "janitorai.com": {
-            "enabled": true,
-            "connectConfig": {
-                "turnstile": true,
-                "headless": false
-            },
-            "minFinalDelay": 1000
-        },
-        "character.ai": {
-            "enabled": true,
-            "connectConfig": {
-                "turnstile": false
-            },
-            "minFinalDelay": 1000
-        },
-        "crushon.ai": {
-            "enabled": true,
-            "connectConfig": {
-                "turnstile": true,
-                "headless": false
-            },
-            "minFinalDelay": 1000
-        },
-        "createporn.com": {
-            "enabled": true,
-            "connectConfig": {
-                "turnstile": true
-            },
-            "minFinalDelay": 1000
-        },
-        "aichattings.com": {
-            "enabled": true,
-            "connectConfig": {
-                "turnstile": true
-            },
-            "minFinalDelay": 1000
-        }
-    }
-};
+3. **Install Dependencies**  
+   Clone or download this repository, navigate to the project directory, and run:
+```bash
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install puppeteer
 ```
 
-### Configuration Options
+4. **Copy Configuration**  
+   Copy `config.example.js` to `config.js`:
+   ```bash
+   cp config.example.js config.js
+   ```
 
-#### `globalConnectConfig`
-Shared settings applied to all websites, unless overridden.
+5. **Configure Options**  
+   Edit `config.js` to set the browser path and website settings. Below is an example based on your current configuration:
 
-- **`headless`** (boolean, default: `true`):
-  - `true`: Runs the browser in headless mode (no visible UI).
-  - `false`: Opens a visible browser window, useful for debugging or sites requiring user interaction (e.g., Turnstile).
-- **`customConfig`** (object):
-  - **`chromePath`** (string): Path to the browser executable.
-    - Brave (preferred): e.g., `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser` (MacOS).
-    - Chrome: e.g., `/usr/bin/google-chrome` (Linux) or `C:\Program Files\Google\Chrome\Application\chrome.exe` (Windows).
-    - Update based on your OS and browser choice.
-  - **`args`** (array, optional): Command-line arguments for Puppeteer.
-    - Default includes uBlock Origin extension:
-      ```javascript
-      [
-          '--disable-extensions-except=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
-          '--load-extension=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0'
-      ]
-      ```
-- **`connectOption`** (object, optional):
-  - **`timeout`** (number, default: `1000`): Timeout (ms) for browser connection attempts.
+   ```javascript
+   module.exports = {
+       parallelBrowserCount: 2,
+       globalConnectConfig: {
+           delays: {
+               hideCookies: 500,
+               hidePopups: 10,
+               cloudFlare: {
+                   timeout: 60000,
+                   maxAttempts: 600,
+                   delay: 10,
+                   finalDelay: 1000,
+                   urlCheckTimeout: 1000
+               },
+               initialLoadTimeoutDelay: 500,
+               secondaryLoadTimeoutAttempts: 15,
+               secondaryLoadTimeoutDelay: 50
+           },
+           headless: false,
+           customConfig: {
+               chromePath: "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+           }
+       },
+       websites: {
+           "janitorai.com": {
+               enabled: true,
+               connectConfig: { turnstile: true, headless: false },
+               minFinalDelay: 5000
+           },
+           "character.ai": {
+               enabled: true,
+               connectConfig: { turnstile: false },
+               minFinalDelay: 1000
+           },
+           "crushon.ai": {
+               enabled: true,
+               connectConfig: { turnstile: true, headless: false },
+               minFinalDelay: 1000
+           },
+           "createporn.com": {
+               enabled: true,
+               connectConfig: { turnstile: true },
+               minFinalDelay: 1000
+           },
+           "aichattings.com": {
+               enabled: true,
+               connectConfig: { turnstile: true },
+               minFinalDelay: 1000
+           }
+       }
+   };
+   ```
 
-#### `websites`
-Per-website settings, with each key being a domain (e.g., `janitorai.com`).
+   **Config Options**:
+   - **`parallelBrowserCount`** (number): Maximum concurrent browser instances (e.g., 2 for running two sites at once).
+   - **`globalConnectConfig`**:
+     - `delays` (object): Timing settings for page loading, Cloudflare, pop-ups, and cookies.
+     - `headless` (boolean, default: `true`): `true` for no browser UI, `false` to show browser (useful for Cloudflare Turnstile).
+     - `customConfig.chromePath` (string): Path to Brave executable, e.g., `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser` (MacOS), `/usr/bin/brave-browser` (Linux), or `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe` (Windows).
+   - **`websites`** (object): Per-site settings:
+     - `enabled` (boolean): `true` to capture screenshot, `false` to skip.
+     - `connectConfig.turnstile` (boolean): `true` if site uses Cloudflare Turnstile, `false` otherwise.
+     - `connectConfig.headless` (boolean, optional): Overrides `globalConnectConfig.headless` for the site.
+     - `minFinalDelay` (number, default: 1000): Delay (ms) before capturing screenshot to ensure page stability.
+     - `connectConfig.mouseMovements` (object, optional): Mouse movement settings:
+       - `enabled` (boolean, default: `true`): Enable/disable human-like mouse movements.
+       - `scrollProbability` (number, default: 0.15): Chance of scrolling (0 to 1).
 
-- **`enabled`** (boolean):
-  - `true`: Include the website in screenshot capture.
-  - `false`: Skip the website.
-- **`connectConfig`** (object):
-  - **`turnstile`** (boolean):
-    - `true`: Site uses Cloudflare Turnstile (anti-bot protection). The script waits for Turnstile resolution.
-    - `false`: No Turnstile handling needed.
-  - **`headless`** (boolean, optional):
-    - Overrides `globalConnectConfig.headless` for this site.
-    - Set to `false` for sites requiring visible browser (e.g., Turnstile or complex pop-ups).
-  - Other properties (e.g., `proxy`, `customConfig`) can override `globalConnectConfig` if needed.
-- **`minFinalDelay`** (number):
-  - Minimum delay (ms) after hiding pop-ups/cookies, before capturing the screenshot.
-  - Ensures page stability (e.g., animations complete).
-  - Default: `1000` (1 second).
-
-## Usage
-
-1. Ensure `config.js` is configured with the correct browser path and website settings.
-2. Run the screenshot script:
+6. **Run the Script**  
+   Execute the screenshot capture:
    ```bash
    npm run start
    ```
-3. Screenshots are saved in the `screenshots/` folder, named by domain (e.g., `janitorai_com.webp`).
 
 ## Features
-
-- **Ad Blocking**: uBlock Origin (loaded via browser extension) removes ads.
-- **Pop-up Handling**: Custom script (`hidePopups`) hides fixed/absolute elements (e.g., modals) with high z-index, excluding navigation, using aspect ratio filtering.
-- **Cookie Banners**: Script (`hideCookies`) removes cookie consent pop-ups.
-- **Cloudflare Turnstile**: Handles anti-bot checks (`waitForCloudflare`) for sites with `turnstile: true`.
-- **Output**: 1200px-wide, ≤100KB WebP screenshots, compressed with `sharp`.
-
-## Notes
-
-- **Browser Choice**: Brave is preferred for built-in ad-blocking on top of uBlock, but Chrome works too. Ensure the `chromePath` matches your installed browser.
-- **Turnstile Sites**: Sites with `turnstile: true` may require `headless: false` to resolve anti-bot challenges manually.
+- Captures 1200px-wide, ≤100KB WebP screenshots.
+- Uses uBlock Origin to block ads.
+- Hides pop-ups and cookie banners.
+- Handles Cloudflare Turnstile with human-like mouse movements (no clicks, scrolls return to top).
+- Shows progress bars for each website (9 steps: Starting, Initializing browser, Navigating, Waiting for Cloudflare, Hiding popups, Hiding cookies, Final delay, Capturing screenshot, Compressing image, Success/Failed).
 
 ## Troubleshooting
+- **Browser not found**: Verify `chromePath` in `config.js`.
+- **No screenshots**: Ensure `enabled: true` and try `headless: false` for Turnstile sites.
+- **Turnstile issues**: Set `headless: false` to monitor or resolve anti-bot challenges.
+- **Large files**: Verify `sharp` is installed (`npm install sharp`).
 
-- **Browser not found**: Verify `chromePath` in `config.js` points to Brave or Chrome.
-- **Screenshots missing**: Check `enabled: true` for websites and ensure Turnstile sites render correctly (try `headless: false`).
-- **Large file sizes**: Screenshots are compressed to ≤100KB using `sharp`. Ensure `npm install sharp` was successful.
-- **Turnstile failures**: Set `headless: false` and watch the browser to resolve anti-bot challenges manually.
-- **Extension errors**: Confirm uBlock Origin path in `args` matches your setup.
-
-## Dependencies
-
-- `puppeteer`: Headless browser control.
-- `sharp`: Image resizing and compression.
-- `uBlock Origin`: Ad blocking (via browser extension).
+## Notes
+- Brave Browser is recommended for better ad-blocking with uBlock Origin.
+- Set `headless: false` for sites with Turnstile (e.g., janitorai.com, crushon.ai) to monitor behavior.
+- Adjust `parallelBrowserCount` based on system resources (e.g., 2 for low-memory systems).

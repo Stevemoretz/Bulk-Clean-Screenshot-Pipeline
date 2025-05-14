@@ -11,20 +11,67 @@ const { sleep } = require('./utils/sleep');
 
 // Default connect configuration
 const defaultConnectConfig = {
-    proxy: {
-        host: '127.0.0.1',
-        port: '10809'
-    },
+    turnstile: true,
+    // delays: {
+    //     hideCookies: 500,
+    //     hidePopups: 10,
+    //     cloudFlare: {
+    //         timeout: 60000,
+    //         maxAttempts: 250,
+    //         delay: 20,
+    //         finalDelay: 1000,
+    //         urlCheckTimeout: 1000,
+    //     },
+    //     initialLoadTimeoutDelay: 500,
+    //     secondaryLoadTimeoutAttempts: 15,
+    //     secondaryLoadTimeoutDelay: 50,
+    // },
     customConfig: {
         chromePath: '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
         args: [
-            '--proxy-server=127.0.0.1:10809',
             '--disable-extensions-except=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
             '--load-extension=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0'
         ]
     },
-    connectOption: { timeout: 1000 }
+    connectOption: { timeout: 1000 },
+    // mouseMovements: {
+    //     enabled: true,
+    //     scrollProbability: 0.15
+    // }
 };
+
+// Utility to run tasks with a concurrent queue
+async function runConcurrentQueue(tasks, limit) {
+    const results = [];
+    const queue = [...tasks]; // Copy tasks to process
+    const activeTasks = new Set();
+
+    // Function to start a new task if under limit
+    async function startNextTask() {
+        if (queue.length === 0 || activeTasks.size >= limit) return;
+
+        const task = queue.shift(); // Get next task
+        if (!task) return;
+
+        activeTasks.add(task);
+        try {
+            const result = await task();
+            results.push(result);
+        } finally {
+            activeTasks.delete(task);
+            await startNextTask(); // Start next task after one completes
+        }
+    }
+
+    // Start initial tasks up to the concurrency limit
+    await Promise.all(
+        Array(Math.min(limit, queue.length))
+            .fill()
+            .map(() => startNextTask())
+    );
+
+    return results;
+}
 
 // Capture screenshot for a single URL
 async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
@@ -35,26 +82,28 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
         await navigatePage(page, url);
 
         bar.increment(1, { step: 'Waiting for Cloudflare' });
-        await waitForCloudflare(page, url);
+        if (connectConfig.turnstile) {
+            await waitForCloudflare(connectConfig, page, url, connectConfig.delays.cloudFlare.timeout);
+        }
 
         try {
-            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 500 });
+            await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 5000 });
         } catch {
-            await sleep(500);
+            await sleep(connectConfig.delays.initialLoadTimeoutDelay || 500);
         }
 
         bar.increment(1, { step: 'Hiding popups' });
-        await hidePopups(page);
+        await hidePopups(connectConfig, page);
 
         bar.increment(1, { step: 'Hiding cookies' });
-        await hideCookies(page);
+        await hideCookies(connectConfig, page);
 
         bar.increment(1, { step: 'Final delay' });
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < (connectConfig.delays.secondaryLoadTimeoutAttempts || 15); i++) {
             try {
-                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 1000 });
+                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 500 });
             } catch {}
-            await sleep(50);
+            await sleep(connectConfig.delays.secondaryLoadTimeoutDelay || 50);
         }
         await sleep(connectConfig.minFinalDelay || 0);
 
@@ -65,6 +114,11 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
         bar.increment(1, { step: 'Compressing image' });
         await compressImageUntilSize(tempPath, outputPath);
         await fs.unlink(tempPath);
+
+        bar.increment(1, { step: 'Success' }); // Final tick for success
+    } catch (e) {
+        bar.increment(1, { step: `Failed: ${e.message}` }); // Final tick for failure
+        throw e; // Re-throw to maintain result tracking
     } finally {
         await closeBrowser(browser);
     }
@@ -77,19 +131,25 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
 
     const enabledWebsites = Object.entries(config.websites).filter(([_, siteConfig]) => siteConfig.enabled);
 
-    for (const [domain, siteConfig] of enabledWebsites) {
+    // Create a multi-bar for progress tracking
+    const multibar = new cliProgress.MultiBar({
+        format: 'Processing {domain} [{bar}] {value}/{total} {step}',
+        barCompleteChar: '\u2588',
+        barIncompleteChar: '\u2591',
+        hideCursor: true
+    }, cliProgress.Presets.shades_classic);
+
+    // Concurrency limit (adjust based on system resources)
+    const CONCURRENCY_LIMIT = config.parallelBrowserCount;
+
+    // Map websites to tasks
+    const tasks = enabledWebsites.map(([domain, siteConfig]) => async () => {
         const url = `https://${domain}`;
         const fileName = domain.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
         const outputPath = path.join(outputDir, `${fileName}.webp`);
 
-        // Create a new progress bar for this website
-        const bar = new cliProgress.SingleBar({
-            format: 'Processing {domain} [{bar}] {value}/{total} {step}',
-            barCompleteChar: '\u2588',
-            barIncompleteChar: '\u2591',
-            hideCursor: true
-        }, cliProgress.Presets.shades_classic);
-        bar.start(8, 0, { domain, step: 'Starting' }); // 7 steps: Initialize, Navigate, Cloudflare, Popups, Cookies, Final Delay, Screenshot, Compress
+        // Create a progress bar for this website (9 steps to include final status)
+        const bar = multibar.create(9, 0, { domain, step: 'Starting' });
 
         // Merge global, default, and site-specific connect configs
         const connectConfig = merge.all([
@@ -101,11 +161,17 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
 
         try {
             await captureScreenshot(url, domain, outputPath, connectConfig, bar);
-            console.log(`Saved to ${outputPath}`);
+            return { domain, status: 'success', outputPath };
         } catch (e) {
-            console.error(`Failed for ${url}: ${e.message}`);
+            return { domain, status: 'failed', error: e.message };
         } finally {
             bar.stop();
         }
-    }
+    });
+
+    // Execute tasks with concurrent queue
+    await runConcurrentQueue(tasks, CONCURRENCY_LIMIT);
+
+    // Stop the multi-bar
+    multibar.stop();
 })();

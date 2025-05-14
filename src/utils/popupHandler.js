@@ -1,7 +1,7 @@
 const { sleep } = require('./sleep');
 
 // Hide cookie consent popups
-async function hideCookies(page) {
+async function hideCookies(connectConfig, page) {
     await page.evaluate(() => {
         const selector = 'a[id*=cookie i], a[class*=cookie i], button[id*=cookie i], button[class*=cookie i]';
         const expectedText = /^(Accept|Accept all cookies|Accept all|Accept All|Allow|Allow all|Allow All|Allow all cookies|OK)$/gi;
@@ -11,11 +11,11 @@ async function hideCookies(page) {
             }
         });
     });
-    await sleep(500);
+    await sleep(connectConfig.delays.hideCookies || 500);
 }
 
 // Hide general popups and overlays
-async function hidePopups(page) {
+async function hidePopups(connectConfig, page) {
     await page.evaluate(() => {
         const elements = document.querySelectorAll('*');
         for (const el of elements) {
@@ -35,6 +35,7 @@ async function hidePopups(page) {
             }
         }
     });
+    await sleep(connectConfig.delays.hidePopups || 1);
 }
 
 module.exports = { hideCookies, hidePopups };
