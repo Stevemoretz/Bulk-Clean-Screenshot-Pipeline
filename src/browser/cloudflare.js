@@ -80,16 +80,16 @@ async function simulateHumanMouse(page, connectConfig) {
             30
         );
 
-        // Occasional scroll with return to top
-        if (Math.random() < (connectConfig.mouseMovements?.scrollProbability || 0.15)) {
-            const scrollAmount = getRandomInt(50, 150); // Small scroll
-            for (let j = 0; j < scrollAmount; j += 10) {
-                await page.mouse.wheel({ deltaY: 10 });
-                await sleep(getRandomInt(10, 30));
-            }
-            // Scroll back to top
-            await page.evaluate(() => window.scrollTo(0, 0));
-        }
+        // // Occasional scroll with return to top
+        // if (Math.random() < (connectConfig.mouseMovements?.scrollProbability || 0.15)) {
+        //     const scrollAmount = getRandomInt(50, 150); // Small scroll
+        //     for (let j = 0; j < scrollAmount; j += 10) {
+        //         await page.mouse.wheel({ deltaY: 10 });
+        //         await sleep(getRandomInt(10, 30));
+        //     }
+        //     // Scroll back to top
+        //     await page.evaluate(() => window.scrollTo(0, 0));
+        // }
     }
 }
 

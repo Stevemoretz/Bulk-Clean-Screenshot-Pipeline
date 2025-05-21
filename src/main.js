@@ -26,12 +26,20 @@ const defaultConnectConfig = {
     //     secondaryLoadTimeoutAttempts: 15,
     //     secondaryLoadTimeoutDelay: 50,
     // },
+    args: [
+        '--disable-extensions-except=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        '--load-extension=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        // '--disable-extensions-except=chrome-extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        // '--load-extension=chrome-extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0'
+    ],
     customConfig: {
         chromePath: '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
-        args: [
-            '--disable-extensions-except=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
-            '--load-extension=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0'
-        ]
+        // args: [
+        //     '--disable-extensions-except=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        //     '--load-extension=extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        //     '--disable-extensions-except=chrome-extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0',
+        //     '--load-extension=chrome-extensions/cjpalhdlnbpafiamejdnhcphjbkeiagm/1.63.2_0'
+        // ]
     },
     connectOption: { timeout: 1000 },
     // mouseMovements: {
@@ -106,6 +114,19 @@ async function captureScreenshot(url, domain, outputPath, connectConfig, bar) {
             await sleep(connectConfig.delays.secondaryLoadTimeoutDelay || 50);
         }
         await sleep(connectConfig.minFinalDelay || 0);
+
+        if(connectConfig.clicks){
+            for (const action of connectConfig.clicks) {
+                if (action.click === 'click') {
+                    // Wait for the selector to appear in the DOM
+                    await page.waitForSelector(action.selector);
+                    // Perform the click
+                    await page.click(action.selector);
+                    // Wait for the specified delay
+                    await sleep(action.delay);
+                }
+            }
+        }
 
         const tempPath = `temp_${domain}.webp`;
         bar.increment(1, { step: 'Capturing screenshot' });
